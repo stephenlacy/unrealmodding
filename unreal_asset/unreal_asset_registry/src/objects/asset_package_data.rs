@@ -38,6 +38,8 @@ pub struct AssetPackageData {
     pub custom_versions: Option<Vec<CustomVersion>>,
     /// Flags
     pub flags: u32,
+    /// Package build dependencies (UE5.5+)
+    pub package_build_dependencies: Option<Vec<FName>>,
 
     /// Asset registry version
     version: FAssetRegistryVersionType,
@@ -83,6 +85,12 @@ impl AssetPackageData {
             imported_classes = Some(asset.read_array(|asset: &mut Reader| asset.read_fname())?);
         }
 
+        // Read package build dependencies if object version is high enough
+        let mut package_build_dependencies = None;
+        if asset.get_object_version_ue5() >= unreal_asset_base::object_version::ObjectVersionUE5::ASSETREGISTRY_PACKAGEBUILDDEPENDENCIES {
+            package_build_dependencies = Some(asset.read_array(|asset: &mut Reader| asset.read_fname())?);
+        }
+
         Ok(Self {
             package_name,
             package_guid,
@@ -94,6 +102,7 @@ impl AssetPackageData {
             file_version_licensee_ue,
             custom_versions,
             flags,
+            package_build_dependencies,
 
             version,
         })
@@ -146,8 +155,21 @@ impl AssetPackageData {
                 RegistryError::version("Imported classes".to_string(), self.version)
             })?;
 
-            for immported_class in imported_classes {
-                asset.write_fname(immported_class)?;
+            for imported_class in imported_classes {
+                asset.write_fname(imported_class)?;
+            }
+        }
+
+        // Write package build dependencies if the object version is high enough
+        if asset.get_object_version_ue5() >= unreal_asset_base::object_version::ObjectVersionUE5::ASSETREGISTRY_PACKAGEBUILDDEPENDENCIES {
+            if let Some(build_dependencies) = &self.package_build_dependencies {
+                asset.write_i32::<LE>(build_dependencies.len() as i32)?;
+                for dependency in build_dependencies {
+                    asset.write_fname(dependency)?;
+                }
+            } else {
+                // Write empty array
+                asset.write_i32::<LE>(0)?;
             }
         }
 

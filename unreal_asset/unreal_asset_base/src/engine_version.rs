@@ -84,6 +84,12 @@ pub enum EngineVersion {
     VER_UE5_1,
     /// 5.2
     VER_UE5_2,
+    /// 5.3
+    VER_UE5_3,
+    /// 5.4
+    VER_UE5_4,
+    /// 5.5
+    VER_UE5_5,
 
     /// The newest specified version of the Unreal Engine.
     VER_UE4_AUTOMATIC_VERSION,
@@ -228,9 +234,27 @@ lazy_static! {
                 ObjectVersionUE5::ADD_SOFTOBJECTPATH_LIST,
                 EngineVersion::VER_UE5_1
             ),
+            (ObjectVersionUE5::DATA_RESOURCES, EngineVersion::VER_UE5_2),
+            (ObjectVersionUE5::DATA_RESOURCES, EngineVersion::VER_UE5_3),
+            (
+                ObjectVersionUE5::SCRIPT_SERIALIZATION_OFFSET,
+                EngineVersion::VER_UE5_4
+            ),
+            (
+                ObjectVersionUE5::PROPERTY_TAG_EXTENSION_AND_OVERRIDABLE_SERIALIZATION,
+                EngineVersion::VER_UE5_4
+            ),
+            (
+                ObjectVersionUE5::PROPERTY_TAG_COMPLETE_TYPE_NAME,
+                EngineVersion::VER_UE5_5
+            ),
+            (
+                ObjectVersionUE5::ASSETREGISTRY_PACKAGEBUILDDEPENDENCIES,
+                EngineVersion::VER_UE5_5
+            ),
             (
                 ObjectVersionUE5::AUTOMATIC_VERSION,
-                EngineVersion::VER_UE5_2
+                EngineVersion::VER_UE5_5
             )
         ]);
 }

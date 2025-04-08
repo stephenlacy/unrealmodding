@@ -317,7 +317,7 @@ pub trait ExportReaderTrait<Index: PackageIndexTrait>:
     ///
     /// This function doesn't automatically create a raw export if an error occurs
     ///
-    /// This function also doens't automatically reduce the export
+    /// This function also doesn't automatically reduce the export
     ///
     /// # Arguments
     ///
@@ -462,6 +462,7 @@ pub trait ExportReaderTrait<Index: PackageIndexTrait>:
             Err(_e) => {
                 // todo: warning?
                 self.seek(SeekFrom::Start(serial_offset))?;
+                // println!("Raw export: {:?}", ep);
                 Ok(RawExport::from_base(base_export, self)?.into())
             }
         }

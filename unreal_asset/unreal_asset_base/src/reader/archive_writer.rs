@@ -23,6 +23,23 @@ pub trait ArchiveWriter<Index: PackageIndexTrait>: ArchiveTrait<Index> + Write {
 
         Ok(())
     }
+
+    /// Write a complete type name for property tag when using UE5.5+ assets
+    fn write_property_complete_type_name(
+        &mut self,
+        complete_type_name: Option<&FName>,
+    ) -> Result<(), Error> {
+        if self.get_object_version_ue5()
+            >= crate::object_version::ObjectVersionUE5::PROPERTY_TAG_COMPLETE_TYPE_NAME
+        {
+            self.write_bool(complete_type_name.is_some())?;
+            if let Some(name) = complete_type_name {
+                self.write_fname(name)?;
+            }
+        }
+
+        Ok(())
+    }
     /// Write an `FName`
     fn write_fname(&mut self, fname: &FName) -> Result<(), Error> {
         match fname {

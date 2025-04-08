@@ -696,6 +696,21 @@ pub enum ObjectVersionUE5 {
     /// Added bulk/data resource table
     DATA_RESOURCES,
 
+    /// Added script property serialization offset to export table entries for saved, versioned packages
+    /// The location (relative to SerialOffset) of the beginning of the portion of this export's data that is serialized using tagged property serialization
+    SCRIPT_SERIALIZATION_OFFSET,
+
+    /// Adding property tag extension,
+    /// Support for overridable serialization on UObject,
+    /// Support for overridable logic in containers
+    PROPERTY_TAG_EXTENSION_AND_OVERRIDABLE_SERIALIZATION,
+
+    /// Added property tag complete type name and serialization type
+    PROPERTY_TAG_COMPLETE_TYPE_NAME,
+
+    /// Changed UE::AssetRegistry::WritePackageData to include PackageBuildDependencies
+    ASSETREGISTRY_PACKAGEBUILDDEPENDENCIES,
+
     /// -----<new versions can be added before this line>-------------------------------------------------
     AUTOMATIC_VERSION,
     /// Automatic version plus one

@@ -60,6 +60,10 @@ pub struct UAssetExportMapEntry {
     pub serial_size: i64,
     /// Serialized offset
     pub serial_offset: i64,
+    /// Script serialization start offset (relative to SerialOffset)
+    pub script_serialization_start_offset: i64,
+    /// Script serialization end offset (relative to SerialOffset)
+    pub script_serialization_end_offset: i64,
     /// Is forced export
     pub forced_export: bool,
     /// Is not for client
@@ -99,6 +103,8 @@ impl UAssetExportMapEntry {
         let mut entry = UAssetExportMapEntry {
             class_index: PackageIndex::new(archive.read_i32::<LE>()?),
             super_index: PackageIndex::new(archive.read_i32::<LE>()?),
+            script_serialization_start_offset: 0,
+            script_serialization_end_offset: 0,
             ..Default::default()
         };
 
@@ -157,6 +163,13 @@ impl UAssetExportMapEntry {
                 Vec::with_capacity(archive.read_i32::<LE>()? as usize);
             entry.create_before_create_dependencies =
                 Vec::with_capacity(archive.read_i32::<LE>()? as usize);
+        }
+
+        if !archive.has_unversioned_properties()
+            && archive.get_object_version_ue5() >= ObjectVersionUE5::SCRIPT_SERIALIZATION_OFFSET
+        {
+            entry.script_serialization_start_offset = archive.read_i64::<LE>()?;
+            entry.script_serialization_end_offset = archive.read_i64::<LE>()?;
         }
 
         Ok(entry)
@@ -247,6 +260,14 @@ impl UAssetExportMapEntry {
             archive.write_i32::<LE>(self.serialization_before_create_dependencies.len() as i32)?;
             archive.write_i32::<LE>(self.create_before_create_dependencies.len() as i32)?;
         }
+
+        if !archive.has_unversioned_properties()
+            && archive.get_object_version_ue5() >= ObjectVersionUE5::SCRIPT_SERIALIZATION_OFFSET
+        {
+            archive.write_i64::<LE>(self.script_serialization_start_offset)?;
+            archive.write_i64::<LE>(self.script_serialization_end_offset)?;
+        }
+
         Ok(())
     }
 
@@ -261,6 +282,8 @@ impl UAssetExportMapEntry {
             object_flags: self.object_flags,
             serial_size: self.serial_size,
             serial_offset: self.serial_offset,
+            script_serialization_start_offset: self.script_serialization_start_offset,
+            script_serialization_end_offset: self.script_serialization_end_offset,
             forced_export: self.forced_export,
             not_for_client: self.not_for_client,
             not_for_server: self.not_for_server,
@@ -291,6 +314,8 @@ impl UAssetExportMapEntry {
             object_flags: b.object_flags,
             serial_size: b.serial_size,
             serial_offset: b.serial_offset,
+            script_serialization_start_offset: b.script_serialization_start_offset,
+            script_serialization_end_offset: b.script_serialization_end_offset,
             forced_export: b.forced_export,
             not_for_client: b.not_for_client,
             not_for_server: b.not_for_server,
@@ -395,6 +420,8 @@ pub struct Asset<C: Read + Seek> {
     soft_object_paths_count: i32,
     /// Names offset
     soft_object_paths_offset: i32,
+    /// Localization id
+    localization_id: Option<String>,
     /// Gatherable text data count
     gatherable_text_data_count: i32,
     /// Gatherable text data offset
@@ -491,6 +518,7 @@ impl<'a, C: Read + Seek> Asset<C> {
             name_offset: 0,
             soft_object_paths_count: 0,
             soft_object_paths_offset: 0,
+            localization_id: None,
             gatherable_text_data_count: 0,
             gatherable_text_data_offset: 0,
             export_offset: 0,
@@ -606,6 +634,12 @@ impl<'a, C: Read + Seek> Asset<C> {
         self.asset_data.summary.package_flags = EPackageFlags::from_bits(self.read_u32::<LE>()?)
             .ok_or_else(|| Error::invalid_file("Invalid package flags".to_string()))?;
 
+        self.asset_data.summary.not_always_loaded_for_editor_game = self
+            .asset_data
+            .summary
+            .package_flags
+            .contains(EPackageFlags::PKG_FILTER_EDITOR_ONLY);
+
         // read name count and offset
         self.name_count = self.read_i32::<LE>()?;
         self.name_offset = self.read_i32::<LE>()?;
@@ -613,6 +647,13 @@ impl<'a, C: Read + Seek> Asset<C> {
         if self.get_object_version_ue5() >= ObjectVersionUE5::ADD_SOFTOBJECTPATH_LIST {
             self.soft_object_paths_count = self.read_i32::<LE>()?;
             self.soft_object_paths_offset = self.read_i32::<LE>()?;
+        }
+
+        if !self.asset_data.summary.not_always_loaded_for_editor_game
+            && self.get_object_version()
+                >= ObjectVersion::VER_UE4_ADDED_PACKAGE_SUMMARY_LOCALIZATION_ID
+        {
+            self.localization_id = self.read_fstring()?;
         }
 
         // read text gatherable data
@@ -640,7 +681,16 @@ impl<'a, C: Read + Seek> Asset<C> {
         // read guid
         self.package_guid = self.raw_reader.read_guid()?;
 
-        // raed generations
+        if self.asset_data.object_version >= ObjectVersion::VER_UE4_ADDED_PACKAGE_OWNER
+            && !self.asset_data.summary.not_always_loaded_for_editor_game
+        {
+            let _owner_guid = self.read_guid()?;
+            if self.asset_data.object_version < ObjectVersion::VER_UE4_NON_OUTER_PACKAGE_IMPORT {
+                let _owner_guid = self.read_guid()?;
+            }
+        }
+
+        // read generations
         let generations_count = self.read_i32::<LE>()?;
         for _ in 0..generations_count {
             let export_count = self.read_i32::<LE>()?;
@@ -736,6 +786,8 @@ impl<'a, C: Read + Seek> Asset<C> {
 
         if self.get_object_version_ue5() >= ObjectVersionUE5::DATA_RESOURCES {
             self.data_resource_offset = self.read_i32::<LE>()?;
+        } else {
+            self.data_resource_offset = -1;
         }
 
         Ok(())
@@ -880,6 +932,16 @@ impl<'a, C: Read + Seek> Asset<C> {
                 let class_name = self.read_fname()?;
                 let outer_index = PackageIndex::new(self.read_i32::<LE>()?);
                 let object_name = self.read_fname()?;
+
+                let _package_name = if self.get_object_version()
+                    >= ObjectVersion::VER_UE4_NON_OUTER_PACKAGE_IMPORT
+                    && !self.asset_data.summary.not_always_loaded_for_editor_game
+                {
+                    Some(self.read_fname()?)
+                } else {
+                    None
+                };
+
                 let optional =
                     match self.get_object_version_ue5() >= ObjectVersionUE5::OPTIONAL_RESOURCES {
                         true => self.read_i32::<LE>()? == 1,

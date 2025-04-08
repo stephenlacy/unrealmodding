@@ -50,6 +50,10 @@ pub struct BaseExport<Index: PackageIndexTrait> {
     pub serial_size: i64,
     /// Serialized offset
     pub serial_offset: i64,
+    /// Script serialization start offset (relative to SerialOffset)
+    pub script_serialization_start_offset: i64,
+    /// Script serialization end offset (relative to SerialOffset)
+    pub script_serialization_end_offset: i64,
     /// Is forced export
     pub forced_export: bool,
     /// Is not for client

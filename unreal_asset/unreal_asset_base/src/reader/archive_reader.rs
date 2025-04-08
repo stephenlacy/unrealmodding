@@ -27,6 +27,19 @@ pub trait ArchiveReader<Index: PackageIndexTrait>: ArchiveTrait<Index> + Read {
         }
         Ok(None)
     }
+
+    /// Read a complete type name for property tag when using UE5.5+ assets
+    fn read_property_complete_type_name(&mut self) -> Result<Option<FName>, Error> {
+        if self.get_object_version_ue5()
+            >= crate::object_version::ObjectVersionUE5::PROPERTY_TAG_COMPLETE_TYPE_NAME
+        {
+            let has_complete_type_name = self.read_bool()?;
+            if has_complete_type_name {
+                return Ok(Some(self.read_fname()?));
+            }
+        }
+        Ok(None)
+    }
     /// Read an `FName`
     fn read_fname(&mut self) -> Result<FName, Error> {
         let index = self.read_i32::<LE>()?;

@@ -526,7 +526,7 @@ impl Property {
         include_header: bool,
     ) -> Result<Option<Self>, Error> {
         let name: FName;
-        let property_type: FName;
+        let mut property_type: FName;
         let length: i32;
         let duplication_index: i32;
         let mut is_zero = false;
@@ -598,12 +598,21 @@ impl Property {
                 header.zero_mask_index += 1;
             }
         } else {
+            // TODO: this is failing:
             name = asset.read_fname()?;
             if name == "None" {
                 return Ok(None);
             }
+            // Read complete type name for UE5.5+ assets
+            let complete_type_name = asset.read_property_complete_type_name()?;
 
             property_type = asset.read_fname()?;
+
+            // If complete type name is available, use it instead of regular type
+            if let Some(complete_name) = complete_type_name {
+                property_type = complete_name;
+            }
+
             length = asset.read_i32::<LE>()?;
             duplication_index = asset.read_i32::<LE>()?;
         }

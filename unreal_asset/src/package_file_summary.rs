@@ -10,6 +10,8 @@ use unreal_asset_base::{
 pub struct PackageFileSummary {
     /// Package flags
     pub package_flags: EPackageFlags,
+    /// Is not always loaded for editor game
+    pub not_always_loaded_for_editor_game: bool,
     /// Export count
     pub export_count: i32,
     /// Import count
